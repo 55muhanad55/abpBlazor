@@ -1,0 +1,98 @@
+﻿@using Web.Blazor.Models.Tenants;
+@using Web.Blazor.Models.Tenants.Results;
+
+@inject ITenantService tenant
+@inject NotificationService notificationService
+<RadzenCard Style="position: inherit">
+
+    <EditForm Model="updateTenantModel" OnValidSubmit="UpdateTenantAsync">
+        <DataAnnotationsValidator />
+
+        <div class="form-group row required">
+            <label for="name" class="col-md-3 col-form-label"> @c.l["TenancyName"] </label>
+            <div class="col-md-9">
+                <InputText @bind-Value="updateTenantModel.TenancyName" type="text" name="name" class="form-control ng-untouched ng-pristine ng-invalid" ng-reflect-required="" />
+                <ValidationMessage For="() => updateTenantModel.TenancyName" />
+
+            </div>
+        </div>
+        <div class="form-group row required">
+            <label for="displayName" class="col-md-3 col-form-label"> @c.l["Name"] </label><div class="col -md-9">
+                <InputText @bind-Value="updateTenantModel.Name" type="text" name="displayName" class="form-control ng-untouched ng-pristine ng-invalid" />
+                <ValidationMessage For="() => updateTenantModel.Name" />
+
+            </div>
+        </div>
+        <div class="col-md-9">
+            <div class="custom-control custom-checkbox">
+                <InputCheckbox type="checkbox" class="custom-control-input" id="ac"
+                               @bind-Value="updateTenantModel.IsActive" @onclick="async () => await isActiveClick()" />
+                <label class="custom-control-label" for="ac">
+                    @c.l["IsActive"]
+                </label>
+            </div>
+        </div>
+
+        <br />
+        <div class="modal-footer justify-content-between">
+            <button type="button" class="btn btn-default" @onclick="()=> ds.Close()">
+                @c.l["Cancel"]
+            </button>
+
+            <button type="submit" class="btn btn-primary">
+                @c.l["Save"]
+            </button>
+        </div>
+    </EditForm>
+</RadzenCard>
+@code {
+    TenantDto updateTenantModel = new TenantDto();
+
+    [Parameter]
+    public DialogService ds { get; set; }
+    [Parameter]
+    public EventCallback<bool> OnCreated { get; set; }
+    [Parameter]
+    public int tenantId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await tenant.Get(tenantId);
+        updateTenantModel = response.result;
+
+    }
+
+    async Task isActiveClick()
+    {
+        updateTenantModel.IsActive = !updateTenantModel.IsActive;
+        await Task.FromResult(updateTenantModel.IsActive);
+    }
+
+    async Task UpdateTenantAsync()
+    {
+        var response = await tenant.Update(updateTenantModel);
+        if (response.success)
+        {
+            notificationService.Notify(new NotificationMessage()
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = c.l["SavedSuccessfully"],
+                Detail = "",
+                Duration = 3000
+            });
+            await OnCreated.InvokeAsync(true);
+
+        }
+        else
+        {
+            notificationService.Notify(new NotificationMessage()
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = response.error.message,
+                Detail = response.error.details,
+                Duration = 3000
+            });
+        }
+        ds.Close();
+    }
+}

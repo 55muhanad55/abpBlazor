@@ -1,0 +1,129 @@
+﻿@inject IAccountService accountService
+@inject LocalStorage localStorge
+@inject DialogService dialogService
+@inject NotificationService notificationService
+@inject ISessionService sessionService
+@inject NavigationManager navigationManager
+@inject IJSRuntime jsRuntime
+
+
+@using Models.Account
+
+
+<div class="text-center tenant-change-component">
+
+    <span>
+        @c.l["CurrentTenant"]:
+        @if (!string.IsNullOrEmpty(tenancyName))
+        {
+            <span>
+                <strong>@tenancyName </strong>
+            </span>
+
+
+            <a @onclick="ShowSimpleDialog">
+                ( @c.l["Change"] )
+            </a>
+
+        }
+        else
+        {
+            <span>@c.l["NotSelected"] </span>
+            <a @onclick="ShowSimpleDialog">
+                @c.l["Change"]
+            </a>
+
+        }
+
+
+    </span>
+    <hr />
+</div>
+
+
+
+
+@code{
+    string tenancyName = "";
+    IsTenantAvailableRequest model = new IsTenantAvailableRequest();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (sessionService.response.result.tenant != null)
+        {
+            tenancyName = sessionService.UserInfo.tenant.tenancyName;
+            await Task.FromResult(tenancyName);
+        }
+    }
+
+    async Task ShowSimpleDialog() => await dialogService.OpenAsync(c.l["ChangeTenant"], ds =>
+    @<RadzenCard Style="position: inherit">
+        <EditForm Model="model" OnValidSubmit="() => CheckIsTenantAvailable(ds)">
+            <div class="form-group row">
+
+                <label for="tenancyName" class="col-md-3 col-form-label"> @c.l["TenancyName"] </label>
+                <div class="col-md-9">
+                    <InputText name="tenancyName" type="text" class="form-control" @bind-Value="model.tenancyName" />
+                </div>
+            </div>
+            <span><i class="fa fa-info-circle"></i> @c.l["LeaveEmptyToSwitchToHost"] </span>
+
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-default" @onclick="()=> ds.Close()">
+                    @c.l["Cancel"]
+                </button>
+
+                <button type="submit" class="btn btn-primary">
+                    @c.l["Save"]
+                </button>
+            </div>
+        </EditForm>
+
+
+    </RadzenCard>
+
+    );
+
+    async Task CheckIsTenantAvailable(DialogService ds)
+    {
+        if (string.IsNullOrEmpty(model.tenancyName))
+        {
+            await localStorge.ClearAsync();
+            await jsRuntime.InvokeVoidAsync("ref");
+            return;
+        }
+        var response = await accountService.isTenantAvailableAsync(model);
+        if (response.success)
+        {
+            if (response.result.state == 3)
+            {
+                notificationService.Notify(new NotificationMessage()
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "",
+                    Detail = c.l["ThereIsNoTenantDefinedWithName{0}"].Replace("{0}", model.tenancyName),
+                    Duration = 4000
+                });
+            }
+            else if (response.result.state == 1)
+            {
+                tenancyName = model.tenancyName;
+                await localStorge.ClearAsync();
+                await localStorge.SetItemAsync("Abp.TenantId", response.result.tenantId);
+                await jsRuntime.InvokeVoidAsync("ref");
+                ds.Close();
+            }
+        }
+        else
+        {
+            notificationService.Notify(new NotificationMessage()
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = response.error.message,
+                Detail = response.error.details,
+                Duration = 4000
+            });
+        }
+    }
+
+}

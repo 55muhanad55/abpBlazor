@@ -1,0 +1,227 @@
+﻿@using Models.User
+@using Models.Roles
+
+@using Models.User.Results
+@inject IUserService user
+@inject NotificationService notificationService
+
+
+<RadzenTabs>
+    <Tabs>
+        <RadzenTabsItem Text="Details">
+            <EditForm Model="createUserModel" OnValidSubmit="CreateUserAsync">
+                <DataAnnotationsValidator />
+
+                <div class="form-group row required">
+                    <label for="name" class="col-md-3 col-form-label"> @c.l["Name"] </label>
+                    <div class="col-md-9">
+                        <InputTextBox @bind-Value="createUserModel.name" type="text"  class="form-control "  />
+                        <ValidationMessage For="() => createUserModel.name" />
+
+                    </div>
+                </div>
+                
+                <div class="form-group row required">
+                    <label for="name" class="col-md-3 col-form-label"> @c.l["Surname"] </label>
+                    <div class="col-md-9">
+                        <InputTextBox @bind-Value="createUserModel.surname" type="text"  class="form-control "  />
+                        <ValidationMessage For="() => createUserModel.surname" />
+
+                    </div>
+                </div>
+
+                <div class="form-group row required">
+                    <label for="name" class="col-md-3 col-form-label"> @c.l["UserName"] </label>
+                    <div class="col-md-9">
+                        <InputTextBox @bind-Value="createUserModel.userName" type="text"  class="form-control "  />
+                        <ValidationMessage For="() => createUserModel.userName" />
+
+                    </div>
+                </div>
+
+                <div class="form-group row required">
+                    <label for="name" class="col-md-3 col-form-label"> @c.l["Password"] </label>
+                    <div class="col-md-9">
+                        <InputTextBox @bind-Value="createUserModel.password" type="password"  class="form-control "  />
+                        <ValidationMessage For="() => createUserModel.password" />
+
+                    </div>
+                </div>
+                
+                <div class="form-group row required">
+                    <label for="name" class="col-md-3 col-form-label"> @c.l["ConfirmPassword"] </label>
+                    <div class="col-md-9">
+                        <InputTextBox @bind-Value="createUserModel.confirmPassword" type="password" class="form-control " />
+                        <ValidationMessage For="() => createUserModel.confirmPassword" />
+
+                    </div>
+                </div>
+                
+                <div class="form-group row required">
+                    <label for="name" class="col-md-3 col-form-label"> @c.l["EmailAddress"] </label>
+                    <div class="col-md-9">
+                        <InputTextBox @bind-Value="createUserModel.emailAddress" type="text"  class="form-control "  />
+                        <ValidationMessage For="() => createUserModel.emailAddress" />
+
+                    </div>
+                </div>
+                
+                <div class="form-group row mb-0">
+                    <div class="col-md-3">
+                    </div>
+                    <div class="col-md-9">
+                        <div class="custom-control custom-checkbox">
+                            <InputCheckbox type="checkbox" class="custom-control-input" id="ac"
+                                           @bind-Value="createUserModel.isActive" @onclick="async () => await isActiveClick()" />
+                            <label class="custom-control-label" for="ac">
+                                @c.l["IsActive"]
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-default" @onclick="()=> ds.Close()">
+                        @c.l["Cancel"]
+                    </button>
+
+                    <button type="submit" class="btn btn-primary">
+                        @c.l["Save"]
+                    </button>
+                </div>
+            </EditForm>
+        </RadzenTabsItem>
+        <RadzenTabsItem Text="@c.l["Roles"]">
+            <div class="form-group row mb-0">
+                <EditForm Model="createUserModel">
+
+
+                    @foreach (var role in dialogRoles)
+                    {
+                        <div class="col-md-6">
+                            <div class="custom-control custom-checkbox">
+                                <InputCheckbox type="checkbox" class="custom-control-input" id="@roleIndex"
+                                               @bind-Value="role.Granted" @onclick="async () => await checkboxClick(role)" />
+                                <label class="custom-control-label" for="@roleIndex">
+                                    @role.DisplayName
+                                </label>
+                            </div>
+                        </div>
+                        roleIndex++;
+                    }
+                </EditForm>
+            </div>
+        </RadzenTabsItem>
+    </Tabs>
+</RadzenTabs>
+
+
+
+@code {
+
+        CreateUserModel createUserModel = new CreateUserModel();
+        [Parameter]
+        public DialogService ds { get; set; }
+        [Parameter]
+        public EventCallback<bool> OnCreated { get; set; }
+
+        List<RoleDto> allRoles = new List<RoleDto>();
+        List<RoleDialog> dialogRoles = new List<RoleDialog>();
+        List<string> GrantedRole = new List<string>();
+
+
+    int roleIndex = 0;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var respose = await user.GetRoles();
+        allRoles = respose.result.items;
+        foreach (var role in allRoles)
+        {
+            dialogRoles.Add(new RoleDialog
+            {
+                DisplayName = role.displayName,
+                Name = role.name,
+                Granted = false
+            }
+            );
+
+        }
+        createUserModel.isActive = true;
+        await Task.FromResult(dialogRoles);
+    }
+
+    async Task addRole(string role)
+    {
+        GrantedRole.Add(role);
+        await Task.FromResult(GrantedRole);
+    }
+
+    async Task removeRole(string role)
+    {
+        GrantedRole.Remove(role);
+        await Task.FromResult(GrantedRole);
+    }
+
+    async Task checkboxClick(RoleDialog role)
+    {
+        role.Granted = !role.Granted;
+        if (role.Granted)
+        {
+            await addRole(role.Name);
+        }
+        else
+        {
+            await removeRole(role.Name);
+        }
+    }
+
+
+    async Task isActiveClick()
+    {
+        createUserModel.isActive = !createUserModel.isActive;
+        await Task.FromResult(createUserModel.isActive);
+    }
+
+    async Task CreateUserAsync()
+    {
+        CreateUserDto createUser = new CreateUserDto {
+        userName = createUserModel.userName,
+        name = createUserModel.name,
+        surname = createUserModel.surname,
+        emailAddress = createUserModel.emailAddress,
+        isActive = createUserModel.isActive,
+        roleNames = GrantedRole,
+        password = createUserModel.password
+        };
+
+        var response = await user.Create(createUser);
+        if (response.success)
+        {
+            notificationService.Notify(new NotificationMessage()
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = c.l["SavedSuccessfully"],
+                Detail = "",
+                Duration = 3000
+            });
+            await OnCreated.InvokeAsync(true);
+
+        }
+        else
+        {
+            notificationService.Notify(new NotificationMessage()
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = response.error.message,
+                Detail = response.error.details,
+                Duration = 3000
+            });
+        }
+        ds.Close();
+    }
+
+
+}

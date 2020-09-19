@@ -1,0 +1,199 @@
+﻿@page "/Tenants"
+@attribute [Authorize(Policy = "Tenants")]
+
+@using Web.Blazor.Models.Tenants;
+@using Web.Blazor.Models.Tenants.Results;
+@using Web.Blazor.Pages.TenantsDialogs;
+
+
+@inject ITenantService tenant
+@inject DialogService dialogService
+@inject NotificationService notificationService
+<section class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-6">
+                <h1>@c.l["Tenants"]</h1>
+            </div>
+            <div class="col-6 text-right">
+                <button class="btn btn-primary" @onclick="async () => await CreateTenantDialog()">
+                    <i class="fa fa-plus-square"></i>
+                    @c.l["Create"]
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+<section class="content px-2 loading">
+    <div class="container-fluid">
+        <div class="card">
+
+            <div class="card-header">
+                <EditForm Model="searchKeyword">
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <button type="submit" class="btn btn-primary" @onclick=" () =>  refreshResult(searchKeyword.keyword,0)">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <InputText class="form-control" placeholder="@c.l["SearchWithThreeDot"]" @bind-Value="searchKeyword.keyword" />
+
+                    </div>
+                </EditForm>
+            </div>
+
+            <div class="card-body table-responsive p-0">
+                <RadzenGrid TItem="TenantDto" Data="@pageTenants">
+                    <Columns>
+                        <RadzenGridColumn TItem="TenantDto" Property="TenancyName" Title="@c.l["RoleName"]" />
+                        <RadzenGridColumn TItem="TenantDto" Property="Name" Title="@c.l["DisplayName"]" />
+                        <RadzenGridColumn TItem="TenantDto" Context="tenantdata" Title="@c.l["IsActive"]" Width="80px">
+                            <Template Context="tenantdata">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input disabled" @bind="tenantdata.IsActive" />
+                                    <label class="custom-control-label"></label>
+                                </div>
+                            </Template>
+                        </RadzenGridColumn>
+                        <RadzenGridColumn TItem="TenantDto" Context="tenantdata" Title="@c.l["Actions"]" Width="200px">
+                            <Template Context="tenantdata">
+                                <button type="button" class="btn btn-sm btn-secondary" @onclick="async () => await EditTenantDialog(tenantdata.Id)">
+                                    <i class="fas fa-pencil-alt"></i>
+                                    @c.l["Edit"]
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger mx-2" @onclick="async () => await DeleteTenat(tenantdata.Id,tenantdata.Name)">
+                                    <i class="fas fa-trash"></i>
+                                    @c.l["Delete"]
+                                </button>
+                            </Template>
+                        </RadzenGridColumn>
+                    </Columns>
+                </RadzenGrid>
+
+            </div>
+
+
+
+
+            <div class="card-footer bg-light border-top">
+                <div class="row">
+                    <div class="col-sm-4 col-12 text-sm-left text-center">
+                        <button class="btn btn-secondary" @onclick="@( async () => await refreshResult(searchKeyword.keyword,(currentPage-1)*10) )">
+                            <i class="fas fa-redo-alt"></i>
+                        </button>
+                    </div>
+                    <div class="col-sm-4 col-12 text-center">
+                        <p class="mb-0 my-2">
+                            @c.l["TotalRecordsCount"].Replace("{0}", totalTenants.ToString())
+                        </p>
+                    </div>
+                    <div class="col-sm-4 col-12">
+                        <div class="float-sm-right m-auto">
+
+                            <nav>
+                                <ul class="pagination m-0 ng-star-inserted" style="">
+
+
+                                    <li class="page-item ng-star-inserted @((currentPage == 1) ? @disabled : "")">
+                                        <a class="page-link ng-star-inserted" @onclick="@( async () => await refreshResult(searchKeyword.keyword,(currentPage-2)*10))">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
+                                    </li>
+
+
+
+                                    @for (int i = 1; i < pages + 1; i++)
+                                    {
+                                        int pageNum = i;
+                                        <li class="page-item @((currentPage == pageNum) ? @active : "") ng-star-inserted" style="z-index: 0;">
+                                            <a class="page-link" @onclick="@( async () => await refreshResult(searchKeyword.keyword,(pageNum*10-10)))"> @i </a>
+                                        </li>
+                                    }
+                                    <li class="page-item ng-star-inserted @((currentPage == pages) ? @disabled : "")">
+                                        <a class="page-link ng-star-inserted" @onclick="@( async () => await refreshResult(searchKeyword.keyword,(currentPage*10)))"><i class="fas fa-chevron-right"></i></a>
+                                    </li>
+                                </ul>
+                            </nav>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</section>
+
+@code {
+    SearchKeyword searchKeyword = new SearchKeyword();
+
+    int MaxResultCount = 10;
+    int pages = 1;
+    int currentPage = 1;
+    int totalTenants = 0;
+    List<TenantDto> pageTenants = new List<TenantDto>();
+
+    string disabled = "disabled";
+    string active = "active";
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        await refreshResult("", 0);
+    }
+
+    private async Task refreshResult(string word, int skip)
+    {
+        Console.WriteLine(word);
+        var response = await tenant.GetAll(word, skip, MaxResultCount);
+        pageTenants = response.result.items;
+        totalTenants = response.result.totalCount;
+        pages = 1 + ((totalTenants - 1) / MaxResultCount);
+        if (currentPage <= pages)
+        {
+            currentPage = (skip / 10) + 1;
+        }
+        else
+        {
+            currentPage = (skip / 10);
+        }
+    }
+
+
+    async Task CreateTenantDialog() => await dialogService.OpenAsync(c.l["CreateNewTenant"], ds =>
+    @<CreateTenantDialog ds="ds" OnCreated="async () => await refreshResult(searchKeyword.keyword,(currentPage-1)*10)" />             );
+    
+    async Task EditTenantDialog(int id) => await dialogService.OpenAsync(c.l["EditTenant"], ds =>
+    @<EditTenantDialog ds="ds" OnCreated="async () => await refreshResult(searchKeyword.keyword,(currentPage-1)*10)" tenantId="id" />             );
+
+    private async Task DeleteTenat(int id, string tenantName)
+    {
+        var dialogResult = await dialogService.Confirm(c.l["TenantDeleteWarningMessage"].Replace("{0}", tenantName), c.l["AreYouSureWantToDelete"].Replace("{0}", tenantName), new ConfirmOptions() { OkButtonText = c.l["Yes"], CancelButtonText = c.l["No"] });
+        if (dialogResult.HasValue && dialogResult.Value)
+        {
+            var response = await tenant.Delete(id);
+            if (response.success)
+            {
+                notificationService.Notify(new NotificationMessage()
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = c.l["SuccessfullyDeleted"],
+                    Detail = "",
+                    Duration = 3000
+                });
+                await refreshResult(searchKeyword.keyword, (currentPage - 1) * 10);
+            }
+            else
+            {
+                notificationService.Notify(new NotificationMessage()
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = response.error.message,
+                    Detail = response.error.details,
+                    Duration = 3000
+                });
+            }
+        }
+    }
+}

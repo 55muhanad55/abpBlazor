@@ -1,0 +1,5 @@
+﻿<StaticWebAssets Version="1.0">
+  <ContentRoot BasePath="/" Path="C:\Users\Mohanad\source\repos\bp\aspnet-core\Web.Blazor\bin\Debug\netstandard2.1\wwwroot\" />
+  <ContentRoot BasePath="_content/Cloudcrate.AspNetCore.Blazor.Browser.Storage" Path="C:\Users\Mohanad\.nuget\packages\cloudcrate.aspnetcore.blazor.browser.storage\3.0.0\build\..\staticwebassets\" />
+  <ContentRoot BasePath="_content/Radzen.Blazor" Path="C:\Users\Mohanad\.nuget\packages\radzen.blazor\2.11.13\build\..\staticwebassets\" />
+</StaticWebAssets>

@@ -1,0 +1,171 @@
+﻿@using Models.Roles
+@using Models.Roles.Results
+@inject IRoleService role
+@inject NotificationService notificationService
+
+<RadzenTabs>
+    <Tabs>
+        <RadzenTabsItem Text="Details">
+            <EditForm Model="roleModel" OnValidSubmit="EditeRoleAsync">
+                <DataAnnotationsValidator />
+
+                <div class="form-group row required">
+                    <label for="name" class="col-md-3 col-form-label">  @c.l["Name"] </label>
+                    <div class="col-md-9">
+                        <InputText @bind-Value="roleModel.name" type="text" name="name" class="form-control ng-untouched ng-pristine ng-invalid" ng-reflect-required="" />
+                        <ValidationMessage For="() => roleModel.name" />
+
+                    </div>
+                </div>
+                <div class="form-group row required">
+                    <label for="displayName" class="col-md-3 col-form-label"> @c.l["DisplayName"] </label><div class="col-md-9">
+                        <InputText @bind-Value="roleModel.displayName" type="text" name="displayName" class="form-control ng-untouched ng-pristine ng-invalid" />
+                        <ValidationMessage For="() => roleModel.displayName" />
+
+                    </div>
+                </div>
+                <div class="form-group row mb-0">
+                    <label for="description" class="col-md-3 col-form-label"> @c.l["RoleDescription"] </label>
+                    <div class="col-md-9">
+                        <textarea @bind="roleModel.description" type="text" name="description" class="form-control ng-untouched ng-pristine ng-valid"> 
+                   </textarea>
+                    </div>
+                </div>
+                <br />
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-default" @onclick="()=> ds.Close()">
+                        @c.l["Cancel"]
+                    </button>
+
+                    <button type="submit" class="btn btn-primary">
+                        @c.l["Save"]
+                    </button>
+                </div>
+            </EditForm>
+        </RadzenTabsItem>
+        <RadzenTabsItem Text="@c.l["Permissions"]">
+            <div class="form-group row mb-0">
+                <EditForm Model="roleModel">
+
+
+                    @foreach (var premsion in permissionsDialogs)
+                    {
+                        <div class="col-md-6 ng-star-inserted">
+                            <div class="custom-control custom-checkbox">
+                               
+                                <InputCheckbox type="checkbox" class="custom-control-input" id="@premisionsIndex"
+                                               @bind-Value="premsion.Granted" @onclick="() => checkboxClick(premsion)" />
+                                <label class="custom-control-label" for="@premisionsIndex">
+                                    @premsion.DisplayName
+                                </label>
+                            </div>
+                        </div>
+                        premisionsIndex++;
+                    }
+                </EditForm>
+            </div>
+        </RadzenTabsItem>
+    </Tabs>
+</RadzenTabs>
+
+
+@code {
+    EditRoleDto roleModel = new EditRoleDto();
+    List<PermissionsDialog> permissionsDialogs = new List<PermissionsDialog>();
+    int premisionsIndex = 0;
+
+    [Parameter]
+    public DialogService ds { get; set; }
+    [Parameter]
+    public EventCallback<bool> OnCreated { get; set; }
+    [Parameter]
+    public int roleId { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var respose = await role.GetRoleForEdit(roleId);
+        roleModel = new EditRoleDto
+        {
+            name = respose.result.role.name,
+            displayName = respose.result.role.displayName,
+            description = respose.result.role.description,
+            grantedPermissions = new List<string>(),
+
+        };
+
+
+        foreach (var item in respose.result.permissions)
+        {
+            permissionsDialogs.Add(new PermissionsDialog
+            {
+                Name = item.name,
+                DisplayName = item.displayName,
+                Granted = false
+            });
+
+        }
+
+        foreach (var item in respose.result.grantedPermissionNames)
+        {
+            roleModel.grantedPermissions.Add(item);
+            permissionsDialogs.Find(p => p.Name == item).Granted = true;
+        }
+    }
+
+    async Task addPremsion(string premision)
+    {
+        roleModel.grantedPermissions.Add(premision);
+        await Task.FromResult(roleModel.grantedPermissions);
+    }
+    async Task removePremsion(string premision)
+    {
+        roleModel.grantedPermissions.Remove(premision);
+        await Task.FromResult(roleModel.grantedPermissions);
+    }
+
+
+
+    async Task checkboxClick(PermissionsDialog premision)
+    {
+        premision.Granted = !premision.Granted;
+        if (premision.Granted)
+        {
+            await addPremsion(premision.Name);
+        }
+        else
+        {
+            await removePremsion(premision.Name);
+        }
+    }
+
+    async Task EditeRoleAsync()
+    {
+        roleModel.id = roleId;
+        var response = await role.Update(roleModel);
+        if (response.success)
+        {
+            notificationService.Notify(new NotificationMessage()
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = c.l["SavedSuccessfully"],
+                Detail = "",
+                Duration = 3000
+            });
+            await OnCreated.InvokeAsync(true);
+
+        }
+        else
+        {
+            notificationService.Notify(new NotificationMessage()
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = response.error.message,
+                Detail = response.error.details,
+                Duration = 3000
+            });
+        }
+        ds.Close();
+    }
+
+}

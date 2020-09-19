@@ -1,0 +1,21 @@
+﻿@layout AccountLayout
+@page "/Redirect"
+@inject NavigationManager navigationManager
+@inject AuthenticationStateProvider authenticationStateProvider
+
+@code {
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await authenticationStateProvider.GetAuthenticationStateAsync();
+        if (!(auth.User.Identity is null) && auth.User.Identity.IsAuthenticated)
+        {
+            navigationManager.NavigateTo("/");
+        }
+        else
+        {
+            navigationManager.NavigateTo("/Account/Login");
+        }
+    }
+}

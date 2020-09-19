@@ -1,0 +1,121 @@
+﻿@using Models
+@inject ISessionService session
+<div class="top-row pl-4 navbar navbar-dark">
+    <a class="navbar-brand" href="">Web.Blazor</a>
+    <button class="navbar-toggler" @onclick="ToggleNavMenu">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+</div>
+<div class="pl-4 navbar navbar-g">
+    <span class="fa fa-user" aria-hidden="true"></span> @{
+        if (c.info.MultiTenancy.IsEnabled)
+        {
+            if (session.UserInfo.tenant != null)
+            {
+                @session.UserInfo.tenant.tenancyName
+            }
+        }
+    }
+    /@session.UserInfo.user.userName
+
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <ul class="nav flex-column">
+
+
+        @foreach (MenuItem item in Items)
+        {
+            if (string.IsNullOrEmpty(item.primmsion))
+            {
+                <li class="nav-item px-3">
+                    <NavLink class="nav-link" href="@item.route" Match="NavLinkMatch.All">
+                        <span class="@item.icon" aria-hidden="true"></span> @item.label
+                    </NavLink>
+                </li>
+            }
+            else if (c.info.Auth.GrantedPermissions.Any(p => p.Key == item.primmsion))
+            {
+                <li class="nav-item px-3">
+                    <NavLink class="nav-link" href="@item.route" Match="NavLinkMatch.All">
+                        <span class="@item.icon" aria-hidden="true"></span> @item.label
+                    </NavLink>
+                </li>
+            }
+        }
+
+
+
+    </ul>
+
+
+</div>
+
+
+@code {
+
+    private bool collapseNavMenu = true;
+
+
+
+    public List<MenuItem> Items = new List<MenuItem>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Items.Add(new MenuItem
+        {
+            label = c.l["HomePage"],
+            route = "",
+            icon = "fa fa-home nav-icon"
+        });
+
+
+        Items.Add(new MenuItem
+        {
+            label = c.l["Tenants"],
+            route = "/Tenants",
+            icon = "fa fa-building nav-icon",
+            primmsion = "Pages.Tenants"
+        });
+
+        Items.Add(new MenuItem
+        {
+            label = c.l["Users"],
+            route = "/Users",
+            icon = "fa fa-users nav-icon",
+            primmsion = "Pages.Users"
+        });
+
+
+        Items.Add(new MenuItem
+        {
+            label = c.l["Roles"],
+            route = "/Roles",
+            icon = "fa fa-theater-masks nav-icon",
+            primmsion = "Pages.Roles"
+        });
+
+        Items.Add(new MenuItem
+        {
+            label = c.l["About"],
+            route = "/About",
+            icon = "fa fa-info-circle nav-icon"
+        });
+
+        await Task.FromResult(Items);
+    }
+
+
+
+
+
+
+
+
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

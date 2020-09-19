@@ -1,0 +1,93 @@
+﻿@inject NavigationManager navigationManager
+@inject LocalStorage localStorage
+@inject IJSRuntime jsRuntime
+@inject IUserService user
+
+@using Radzen.Blazor
+<nav class="main-header navbar navbar-expand navbar-white navbar-light">
+    <ul class="navbar-nav">
+        <li class="nav-item d-none d-sm-inline-block">
+            <a class="nav-link" @onclick="@(() => navigationManager.NavigateTo("/"))">
+                @c.l["HomePage"]
+            </a>
+        </li>
+        <li class="nav-item d-none d-sm-inline-block">
+            <a class="nav-link" @onclick="@(() => navigationManager.NavigateTo("/About"))">
+                @c.l["About"]
+            </a>
+        </li>
+    </ul>
+</nav>
+
+<ul class="navbar-nav ml-auto">
+    <RadzenMenu>
+        <RadzenMenuItem Text="@(c.info.Localization.CurrentCulture.DisplayName)" Icon="language">
+            @foreach (var lang in c.info.Localization.Languages)
+            {
+                if (lang.DisplayName != c.info.Localization.CurrentCulture.DisplayName)
+                {
+                    string langugeName = lang.Name;
+                    <li class="navigation-item" @onclick="async () => await ChangeLanguge(langugeName)">
+                        <!--!-->
+                        <div class="navigation-item-wrapper" onclick="Radzen.toggleMenuItem(this)">
+                            <!--!-->
+                            <div class="navigation-item-link">
+                                <!--!-->
+                                <span class="navigation-item-text">@lang.DisplayName</span><!--!-->
+                            </div><!--!-->
+                        </div><!--!-->
+                    </li>
+                }
+            }
+
+        </RadzenMenuItem>
+        <RadzenMenuItem Icon="account_circle">
+            <div class="right:0%">
+                <li class="navigation-item" @onclick="@(() => navigationManager.NavigateTo("/Update-Password"))">
+                    <!--!-->
+                    <div class="navigation-item-wrapper" onclick="Radzen.toggleMenuItem(this)">
+                        <!--!-->
+                        <div class="navigation-item-link">
+                            <!--!-->
+                            <i class="material-icons navigation-item-icon"><!--!-->https</i><!--!-->
+                            <span class="navigation-item-text">@c.l["UpdatePassword"]</span><!--!-->
+                        </div><!--!-->
+                    </div><!--!-->
+                </li>
+
+                <li class="navigation-item" @onclick="async () => await logout()">
+                    <!--!-->
+                    <div class="navigation-item-wrapper" onclick="Radzen.toggleMenuItem(this)">
+                        <!--!-->
+                        <div class="navigation-item-link">
+                            <!--!-->
+                            <i class="material-icons navigation-item-icon"><!--!-->login</i><!--!-->
+                            <span class="navigation-item-text">@c.l["Logout"]</span><!--!-->
+                        </div><!--!-->
+                    </div><!--!-->
+                </li>
+
+            </div>
+        </RadzenMenuItem>
+
+    </RadzenMenu>
+
+</ul>
+
+
+
+
+@code {
+
+    async Task logout()
+    {
+        await localStorage.RemoveItemAsync("Abp.AuthToken");
+        await jsRuntime.InvokeVoidAsync("goto", "/Account/Login");
+    }
+    async Task ChangeLanguge(string lang)
+    {
+        await localStorage.SetItemAsync("Abp.Localization.CultureName", lang);
+        await user.ChangeLanguage(new Models.User.ChangeUserLanguageDto { LanguageName = lang });
+        await jsRuntime.InvokeVoidAsync("ref");
+    }
+}

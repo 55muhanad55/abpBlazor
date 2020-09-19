@@ -1,0 +1,148 @@
+﻿@page "/Account/Register"
+
+@layout AccountLayout
+@inject IAccountService AccountService
+@inject NavigationManager NavigationManager
+@inject LocalStorage localStorage
+
+@inject NotificationService notificationService
+@inject ISessionService sessionService
+@inject IAuthService authService
+@inject IJSRuntime jsRuntime
+
+
+@using Models.Account
+@using Models.TokenAuth
+
+
+@if (sessionService.UserInfo.tenant == null)
+{
+    NavigationManager.NavigateTo("/Account/Login");
+}
+<ChangeTenant />
+<h4 class="text-center mb-3">@c.l["Register"]</h4>
+<div class="row">
+    <div class="col-12">
+        <EditForm Model="@model" OnValidSubmit="save">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <div class="input-group">
+                    <InputTextBox type="text" @bind-Value="model.Name" class="form-control" placeholder="@c.l["Name"]"></InputTextBox>
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-arrow-left"></span>
+                        </div>
+                    </div>
+                </div>
+                <ValidationMessage For="() => model.Name" />
+            </div>
+
+            <div class="form-group">
+                <div class="input-group">
+                    <InputTextBox type="text" @bind-Value="model.Surname" class="form-control" placeholder="@c.l["Surname"]"></InputTextBox>
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-arrow-left"></span>
+                        </div>
+                    </div>
+                </div>
+                <ValidationMessage For="() => model.Surname" />
+            </div>
+            <div class="form-group">
+                <div class="input-group">
+                    <InputTextBox type="email" @bind-Value="model.EmailAddress" class="form-control" placeholder="@c.l["EmailAddress"]"></InputTextBox>
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-envelope"></span>
+                        </div>
+                    </div>
+                </div>
+                <ValidationMessage For="() => model.EmailAddress" />
+            </div>
+            <div class="form-group">
+                <div class="input-group">
+                    <InputTextBox type="text" @bind-Value="model.UserName" class="form-control" placeholder="@c.l["UserName"]"></InputTextBox>
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-user"></span>
+                        </div>
+                    </div>
+                </div>
+                <ValidationMessage For="() => model.UserName" />
+            </div>
+            <div class="form-group">
+                <div class="input-group">
+                    <InputTextBox type="password" @bind-Value="model.Password" class="form-control" placeholder="@c.l["Password"]"></InputTextBox>
+
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-lock"></span>
+                        </div>
+                    </div>
+                </div>
+                <ValidationMessage For="() => model.Password" />
+            </div>
+            <div class="row">
+                <div class="col-8">
+                    <button type="button" class="btn btn-default" disabled="@saving" @onclick="@(() => NavigationManager.NavigateTo("/Account/Login"))">
+                        <i class="fa fa-arrow-circle-left"></i> @c.l["Back"]
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button type="submit" class="btn btn-primary btn-block" disabled="@saving">@c.l["Register"]</button>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private RegisterRequest model = new RegisterRequest();
+    bool saving = false;
+
+
+   
+    public async Task save()
+    {
+        saving = true;
+        var response = await AccountService.RegisterAsync(model);
+
+        if (response.success)
+        {
+            AuthenticateRequest registeredAuthenticate = new AuthenticateRequest
+            {
+                userNameOrEmailAddress = model.UserName,
+                password = model.Password,
+                rememberClient = false
+            };
+
+            notificationService.Notify(new NotificationMessage()
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Regiterd",
+                Detail = "The user had been Regitered",
+                Duration = 1000
+            });
+            await Task.Delay(1000);
+            var authResponse = await authService.AuthenticateAsync(registeredAuthenticate);
+            await localStorage.SetItemAsync("Abp.AuthToken", authResponse.result.accessToken);
+            await jsRuntime.InvokeVoidAsync("goto", "/");
+
+        }
+        else
+        {
+            notificationService.Notify(new NotificationMessage()
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = response.error.message,
+                Detail = response.error.details,
+                Duration = 4000
+            });
+
+        }
+        saving = false;
+    }
+
+
+}

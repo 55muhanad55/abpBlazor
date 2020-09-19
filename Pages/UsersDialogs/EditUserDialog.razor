@@ -1,0 +1,209 @@
+﻿@using Models.User
+@using Models.Roles
+
+@using Models.User.Results
+@inject IUserService user
+@inject NotificationService notificationService
+
+
+<RadzenTabs>
+    <Tabs>
+        <RadzenTabsItem Text="Details">
+            <EditForm Model="editUserModel" OnValidSubmit="editUserAsync">
+                <DataAnnotationsValidator />
+
+                <div class="form-group row required">
+                    <label for="name" class="col-md-3 col-form-label"> @c.l["Name"] </label>
+                    <div class="col-md-9">
+                        <InputText @bind-Value="editUserModel.name" type="text" class="form-control " />
+                        <ValidationMessage For="() => editUserModel.name" />
+
+                    </div>
+                </div>
+
+                <div class="form-group row required">
+                    <label for="name" class="col-md-3 col-form-label"> @c.l["Surname"] </label>
+                    <div class="col-md-9">
+                        <InputText @bind-Value="editUserModel.surname" type="text" class="form-control " />
+                        <ValidationMessage For="() => editUserModel.surname" />
+
+                    </div>
+                </div>
+
+                <div class="form-group row required">
+                    <label for="name" class="col-md-3 col-form-label"> @c.l["UserName"] </label>
+                    <div class="col-md-9">
+                        <InputText @bind-Value="editUserModel.userName" type="text" class="form-control " />
+                        <ValidationMessage For="() => editUserModel.userName" />
+
+                    </div>
+                </div>
+
+                <div class="form-group row required">
+                    <label for="name" class="col-md-3 col-form-label"> @c.l["EmailAddress"] </label>
+                    <div class="col-md-9">
+                        <InputText @bind-Value="editUserModel.emailAddress" type="text" class="form-control " />
+                        <ValidationMessage For="() => editUserModel.emailAddress" />
+
+                    </div>
+                </div>
+
+                <div class="form-group row mb-0">
+                    <div class="col-md-3">
+                    </div>
+                    <div class="col-md-9">
+                        <div class="custom-control custom-checkbox">
+                            <InputCheckbox type="checkbox" class="custom-control-input" id="ac"
+                                           @bind-Value="editUserModel.isActive" @onclick="async () => await isActiveClick()" />
+                            <label class="custom-control-label" for="ac">
+                                @c.l["IsActive"]
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-default" @onclick="()=> ds.Close()">
+                        @c.l["Cancel"]
+                    </button>
+
+                    <button type="submit" class="btn btn-primary">
+                        @c.l["Save"]
+                    </button>
+                </div>
+            </EditForm>
+        </RadzenTabsItem>
+        <RadzenTabsItem Text="@c.l["Roles"]">
+            <div class="form-group row mb-0">
+                <EditForm Model="editUserModel">
+
+
+                    @foreach (var role in dialogRoles)
+                    {
+                        <div class="col-md-6">
+                            <div class="custom-control custom-checkbox">
+                                <InputCheckbox type="checkbox" class="custom-control-input" id="@premisionsIndex"
+                                               @bind-Value="role.Granted" @onclick="async () => await checkboxClick(role)" />
+                                <label class="custom-control-label" for="@premisionsIndex">
+                                    @role.DisplayName
+                                </label>
+                            </div>
+                        </div>
+                        premisionsIndex++;
+                    }
+                </EditForm>
+            </div>
+        </RadzenTabsItem>
+    </Tabs>
+</RadzenTabs>
+
+
+
+@code {
+
+    UserResult editUserModel = new UserResult();
+
+    [Parameter]
+    public DialogService ds { get; set; }
+    [Parameter]
+    public EventCallback<bool> OnCreated { get; set; }
+    [Parameter]
+    public int userId { get; set; }
+
+    List<RoleDto> allRoles = new List<RoleDto>();
+    List<RoleDialog> dialogRoles = new List<RoleDialog>();
+
+
+    int premisionsIndex = 0;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        var respose = await user.Get(userId);
+        editUserModel = respose.result;
+        var roleResponse = await user.GetRoles();
+        allRoles = roleResponse.result.items;
+        foreach (var role in allRoles)
+        {
+            dialogRoles.Add(new RoleDialog
+            {
+                DisplayName = role.displayName,
+                Name = role.name.ToUpper(),
+                Granted = false
+            }
+            );
+
+        }
+
+        foreach (var role in respose.result.RoleNames)
+        {
+            dialogRoles.Find(r => r.Name == role).Granted = true;
+        }
+        await Task.FromResult(dialogRoles);
+    }
+
+    async Task addRole(string role)
+    {
+        editUserModel.RoleNames.Add(role);
+        await Task.FromResult(editUserModel.RoleNames);
+    }
+
+    async Task removeRole(string role)
+    {
+        editUserModel.RoleNames.Remove(role);
+        await Task.FromResult(editUserModel.RoleNames);
+    }
+
+    async Task checkboxClick(RoleDialog role)
+    {
+        role.Granted = !role.Granted;
+        if (role.Granted)
+        {
+            await addRole(role.Name);
+        }
+        else
+        {
+            await removeRole(role.Name);
+        }
+    }
+
+
+    async Task isActiveClick()
+    {
+        editUserModel.isActive = !editUserModel.isActive;
+        await Task.FromResult(editUserModel.isActive);
+    }
+
+    async Task editUserAsync()
+    {
+
+        var response = await user.Update(editUserModel);
+        if (response.success)
+        {
+            notificationService.Notify(new NotificationMessage()
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = c.l["SavedSuccessfully"],
+                Detail = "",
+                Duration = 3000
+            });
+            await OnCreated.InvokeAsync(true);
+
+        }
+        else
+        {
+            notificationService.Notify(new NotificationMessage()
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = response.error.message,
+                Detail = response.error.details,
+                Duration = 3000
+            });
+        }
+        ds.Close();
+    }
+
+
+}

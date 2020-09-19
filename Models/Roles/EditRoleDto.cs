@@ -1,0 +1,19 @@
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace Web.Blazor.Models.Roles
+{
+    public class EditRoleDto
+    {
+        [Required]
+        [StringLength(32)]
+        public string name { get; set; }
+
+        [Required]
+        [StringLength(32)]
+        public string displayName { get; set; }
+        public string description { get; set; }
+        public List<string> grantedPermissions { get; set; }
+        public int id { get; set; }
+    }
+}

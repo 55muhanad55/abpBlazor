@@ -1,0 +1,21 @@
+﻿@inject LocalStorage localStorage
+@inject IJSRuntime jsRuntime
+
+<hr />
+<div class="flags-icons text-center">
+
+    @foreach (var lang in c.info.Localization.Languages)
+    {
+        <a @onclick="async () => await changeLanguage(lang.Name)"><span title="@lang.DisplayName"><i class="d-inline-block @lang.Icon ml-1"></i></span></a>
+    }
+
+</div>
+@code {
+
+    private async Task changeLanguage(string languageName)
+    {
+        await localStorage.SetItemAsync("Abp.Localization.CultureName", languageName);
+        await jsRuntime.InvokeVoidAsync("ref");
+
+    }
+}
